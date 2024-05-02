@@ -1,1 +1,237 @@
-test
+// This codebase is written in WIX IDE and use syntax as part of the Wix Code API. 
+
+// The program, being this specific web page, returns an object that house the information based on the user's entered text.
+// The code follows a functional programming approach: functions are kept pure to stay deterministic and self-contained.
+// Neither inheritance nor instantiation are required so the client profile object is created as an object literal rather than using a constructor function or constructor method. 
+
+// Import statement that retrieves functionality for interacting with URLs of the web page. 
+import wixLocation from "wix-location";
+
+// Importing functionality for interacting with the browser window object. 
+import wixWindow from "wix-window";
+
+// Importing the session object from the wix-storage-frontend module and assigning it to the variable sessionStorage. 
+// Rather than exporting and importing objects from and to files, storage is used.
+// Session storage is favored over local or memory storage since the key-values are meant to be cleared when the user navigates to the home page.
+import { session as sessionStorage } from "wix-storage-frontend";
+
+// Array for element fade animation. 
+const fadeArray = [{ name: "fade" }, { duration: 1000 }];
+
+// Arrays to store the client profile object as global rather than local variables to be persistent and not temporary.
+let clientType1Array = [];
+let clientType2Array = [];
+
+
+// For the sake of using arguments, the functions are passed as callbacks into an anonymous function rather than as references. 
+$w.onReady(function () {
+  displaySection();
+  clickingButton();
+});
+
+// Display section based on selected client type. 
+async function displaySection() {
+  // The expression that the switch statement compares with the case clause is an already selected client type from the previous page.
+  let clientType = getClientType("clientStorage");
+  if (clientType) {
+    switch (clientType) {
+      case "clientType1":
+        await displayclientType1Section();
+        break;
+      case "clientType2":
+        await displayclientType2Section();
+        break;
+    }
+  }
+}
+
+// Show the related page elements based on the client type. 
+function displayclientType1Section() {
+  // The returned DOM section element holding the child elements. 
+  const clientType1Section = $w("#clientType1Section");
+  // The section's default collapsed value is set to "true". 
+  expandElement(clientType1Section);
+  // The section's default hidden value is set to "true". 
+  showElement(clientType1Section, fadeArray);
+  // Accessing and setting the text value of the returned page element as passed by its string selector.  
+  $w("#detailsText").text = "To join as clientType1, please fill in your details.";
+}
+
+// Show the related page elements based on the client type. 
+function displayclientType2Section() {
+  // The DOM section element holding the child elements. 
+  const clientType2Section = $w("#clientType2Section");
+  // The section's default collapsed value is set to "true". 
+  expandElement(clientType2Section);
+  // The section's default hidden value is set to "true". 
+  showElement(clientType2Section, fadeArray);
+  // Accessing and setting the text value of the returned page element as passed by its string selector.  
+  $w("#detailsText").text = "To join as clientType2, please fill in your details.";
+}
+
+// Clicking the submit button for collecting personal information through the filled-in user input felds. 
+function clickingButton() {
+  // A one-element array is used in case more buttons will be added later on.
+  let buttonArray = [$w("#submitButton")];
+  // A for...of loop is used rather than the forEach method in case the function would need to be refactored to execute asynchronously. 
+  for (const button of buttonArray) {
+    // Attaching an event listener to the element, as part of Wix Code API syntax, and will execute the callback once the event occurs.
+    button.onClick(() => {
+      // The switch's evaluated expression is the returned HTML element ID-property as a string. 
+      switch (button.id) {
+        case "submitButton":
+          clickingSubmitButton();
+          break;
+        default:
+          console.log("Not a button. ");
+          break;
+      }
+    });
+  };
+}
+
+// Creating the client profile, adding it to an array and navigating to new page.
+async function clickingSubmitButton() {
+  let clientType = getClientType("clientStorage");
+  // Using function composition for chaining and calling the functions sequentially without storing intermediate results. The output of one becomes the input for the next.
+  // Storing the return value before passing it as parameter for creating the object literal. 
+  let capitalizedInputFieldValues = capitalizeInputStrings(checkInputFields(fillingInputFields(clientType)));
+  switch (clientType) {
+    case "clientType1":
+      let clientType1Object = await clientProfileFactory(capitalizedInputFieldValues);
+      // Using await in this an async function, the page navigation is sure to execute after the object has been created and added to the array. 
+      await storageInputs(clientType1Array, clientType1Object);
+      // Pass the URL handle. 
+      navigateToNewPage("/everysportpage");
+      break;
+    case "clientType2":
+      let clientType2Object = await clientProfileFactory(capitalizedInputFieldValues);
+      // Using await in this an async function, the page navigation is sure to execute after the object has been created and added to the array. 
+      await storageInputs(clientType2Array, clientType2Object);
+      // Pass the URL handle. 
+      navigateToNewPage("/clientType2submissionpage");
+      break;
+    default:
+      break;
+  }
+}
+
+// Gathering personal information as user inputs values.
+function fillingInputFields(clientType) {
+  // Initializing the empty input array.
+  let inputFields = [];
+  switch (clientType) {
+    case "clientType1":
+      // Reassigning the input array.
+      // The property value of the returned element (input) is trimmed to remove redundant whitespaces.
+      inputFields = [
+        { storageClientFirstName: $w("#firstNameInput").value.trim() },
+        { storageClientLastName: $w("#lastNameInput").value.trim() },
+        { storageClientBirthday: $w("#birthdayInput").value.trim() },
+        { storageClientEmail: $w("#emailInput").value.trim() },
+        { storageClientPhone: $w("#phoneInput").value.trim() },
+      ];
+      break;
+    case "clientType2":
+      // Reassigning the input array.
+      inputFields = [
+        { storageClientFirstName: $w("#pocFirstNameInput").value.trim() },
+        { storageClientLastName: $w("#pocLastNameInput").value.trim() },
+        { storageClientBirthday: $w("#pocBirthdayInput").value.trim() },
+        { storageClientEmail: $w("#clientType2PhoneInput").value.trim() },
+        { storageClientPhone: $w("#clientType2EmailInput").value.trim() },
+      ];
+      break;
+    default:
+      break;
+  }
+  // Return the original array after modification without the need for a new, transformed one using a map method. 
+  return inputFields;
+}
+
+// Checking the input array.
+// The outer loop iterates over each object and then the inner loop each of its key-value pair value to finally check if the value has a string greater than 0 characters.
+function checkInputFields(inputFields) {
+  for (const inputField of inputFields) {
+    for (const value of Object.values(inputField)) {
+      // Using the strict equality operator to check both value and data type. 
+      if (value.length === 0) {
+        // If a field is left empty then create a window alert message. 
+        alertMessage();
+        // Return false if any value has a length of 0.
+        return false;
+      }
+    }
+  }
+  // If all input fields have content, return true.
+  // Return the original array after modification without the need for a new, transformed one using a map method. 
+  return inputFields;
+}
+
+// Iterating over each key-value for capitalizing its string.
+function capitalizeInputStrings(filledInputFields) {
+  // Iterating over each array element (object). 
+  filledInputFields.forEach((inputField) => {
+    // Iterating over the string values associated with each key.
+    for (const value in inputField) {
+      if (inputField.hasOwnProperty(value)) {
+        // Capitalizing the character at index 0 to then slicing for extracting a substring from index 1 that is concatenated with character at index 0.
+        inputField[value] = inputField[value].charAt(0).toUpperCase() + inputField[value].slice(1);
+      }
+    }
+  });
+  // Return the original array after modification without the need for a new, transformed one using a map method. 
+  return filledInputFields;
+}
+
+// If not all inputs have been filled in upon clicking the submit button, then display a dialogue box with a message and an OK button.
+function alertMessage() {
+  wixWindow.openLightbox("Please fill in every field before submitting. ");
+}
+
+// Factory function to create the client profile object.
+// Its only property holds the array of capitalized strings that are the user inputs. 
+function clientProfileFactory(capitalizedInputFieldValues) {
+  return {
+    profileInfo: capitalizedInputFieldValues,
+  };
+}
+
+// Function to store inputs in session storage.
+// Passing the client profile array and the created object. 
+function storageInputs(storageArray, storageObject) {
+  for (const value of Object.values(storageObject)) {
+    // The use input field value will be stored as long as its not already. 
+    if (!storageArray.includes(value)) {
+      storageArray.push(value);
+    }
+  }
+}
+
+// Get client type from session storage.
+function getClientType(key) {
+  return sessionStorage.getItem(key);
+}
+
+// Show element with fade animation
+function showElement(element, fade) {
+  if (element.hidden) {
+    // Accessing the properties of the two objects contained within the fadeArray.
+    element.show(fade[0].name, fade[1]);
+  }
+}
+
+// Expand collapsed element
+function expandElement(element) {
+  if (element.collapsed) {
+    element.expand();
+  }
+}
+
+// Navigate to new page
+function navigateToNewPage(newPage) {
+  wixLocation.to(newPage);
+  console.log("Redirecting");
+}
+
+
